@@ -2,6 +2,7 @@
 #include <random>
 #include <algorithm>
 #include <ctime>
+#include <memory>
 
 #include "chatlogic.h"
 #include "graphnode.h"
@@ -12,41 +13,52 @@
 ChatBot::ChatBot()
 {
     // invalidate data handles
-    _image = nullptr;
     _chatLogic = nullptr;
     _rootNode = nullptr;
+    _image = std::make_unique<wxBitmap>();
 }
 
 // constructor WITH memory allocation
 ChatBot::ChatBot(std::string filename)
 {
     std::cout << "ChatBot Constructor" << std::endl;
-    
+
     // invalidate data handles
     _chatLogic = nullptr;
     _rootNode = nullptr;
 
     // load image into heap memory
-    _image = new wxBitmap(filename, wxBITMAP_TYPE_PNG);
+    _image = std::make_unique<wxBitmap>(filename, wxBITMAP_TYPE_PNG);
 }
 
 ChatBot::~ChatBot()
 {
     std::cout << "ChatBot Destructor" << std::endl;
-
-    // deallocate heap memory
-    if(_image != NULL) // Attention: wxWidgets used NULL and not nullptr
-    {
-        delete _image;
-        _image = NULL;
-    }
 }
 
-//// STUDENT CODE
-////
+ChatBot::ChatBot(ChatBot &&other)
+{
+    std::cout << "ChatBot Move Constructor" << std::endl;
 
-////
-//// EOF STUDENT CODE
+    this->_chatLogic = std::move(other._chatLogic);
+    this->_currentNode = std::move(other._currentNode);
+    this->_rootNode = std::move(other._rootNode);
+    this->_image.swap(other._image);
+    this->_chatLogic->SetChatbotHandle(this);
+}
+
+ChatBot &ChatBot::operator=(ChatBot &&other)
+{
+    std::cout << "ChatBot Move Assignment Operator" << std::endl;
+
+    this->_chatLogic = std::move(other._chatLogic);
+    this->_currentNode = std::move(other._currentNode);
+    this->_rootNode = std::move(other._rootNode);
+    this->_image.swap(other._image);
+    this->_chatLogic->SetChatbotHandle(this);
+
+    return *this;
+}
 
 void ChatBot::ReceiveMessageFromUser(std::string message)
 {
@@ -69,7 +81,8 @@ void ChatBot::ReceiveMessageFromUser(std::string message)
     if (levDists.size() > 0)
     {
         // sort in ascending order of Levenshtein distance (best fit is at the top)
-        std::sort(levDists.begin(), levDists.end(), [](const EdgeDist &a, const EdgeDist &b) { return a.second < b.second; });
+        std::sort(levDists.begin(), levDists.end(), [](const EdgeDist &a, const EdgeDist &b)
+                  { return a.second < b.second; });
         newNode = levDists.at(0).first->GetChildNode(); // after sorting the best edge is at first position
     }
     else
